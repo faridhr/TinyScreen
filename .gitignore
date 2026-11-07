@@ -1,0 +1,48 @@
+## Build & Output directories
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+publish/
+
+## Visual Studio & IDEs
+.vs/
+.idea/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+## Visual Studio Code (abaikan workspace state, simpan config jika ada)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+## .NET Core / NuGet
+*.lock.json
+project.lock.json
+*.nuget.props
+*.nuget.targets
+.dotnet/
+
+## Crash Dumps & Logs
+*.log
+*.dmp
+*.crash
+app.log
+
+## Media & Output Rekaman Lokal
+*.mp4
+*.avi
+*.mkv
+*.wav
+*.mp3
+
+## OS Generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+

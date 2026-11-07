@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Platforms>x64</Platforms>
+    <Platform>x64</Platform>
+    <PlatformTarget>x64</PlatformTarget>
+    
+    <!-- Konfigurasi Single File Binary -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ScreenRecorderLib" Version="7.0.1" />
+  </ItemGroup>
+
+  <Target Name="ExcludeScreenRecorderLibFromBundle" BeforeTargets="GenerateSingleFileBundle">
+    <ItemGroup>
+      <_ScreenRecorderLibDll Include="@(FilesToBundle)" Condition="'%(Filename)' == 'ScreenRecorderLib' and '%(Extension)' == '.dll'" />
+      <FilesToBundle Remove="@(_ScreenRecorderLibDll)" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_ScreenRecorderLibDll)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>
