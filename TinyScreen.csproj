@@ -8,6 +8,8 @@
     <Platforms>x64</Platforms>
     <Platform>x64</Platform>
     <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>TinyScreen</AssemblyName>
+    <RootNamespace>TinyScreen</RootNamespace>
     
     <!-- Konfigurasi Single File Binary -->
     <PublishSingleFile>true</PublishSingleFile>
@@ -18,7 +20,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ScreenRecorderLib" Version="7.0.1" />
+    <PackageReference Include="ScreenRecorderLib" Version="6.6.0" />
   </ItemGroup>
 
   <Target Name="ExcludeScreenRecorderLibFromBundle" BeforeTargets="GenerateSingleFileBundle">

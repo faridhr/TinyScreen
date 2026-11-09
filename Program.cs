@@ -4,7 +4,7 @@ using System.IO;
 using System.Threading;
 using ScreenRecorderLib;
 
-namespace TinyScreenRec
+namespace TinyScreen
 {
     internal class Program
     {
@@ -24,22 +24,22 @@ namespace TinyScreenRec
         // ------------------------------------------------------------------
         private static readonly List<(string Label, int Width, int Height, int Bitrate)> ResolutionPresets = new()
         {
-            ("720p HD (1280x720) [Hemat Size - Default]",      1280,  720,  500 * 1000),
+            ("720p HD (1280x720) [Hemat Size]",                 1280,  720,  500 * 1000),
             ("1080p FHD (1920x1080) [Lebih Tajam, File Besar]", 1920, 1080, 1500 * 1000),
             ("480p (854x480) [Ultra Ringan]",                   854,  480,  300 * 1000),
-            ("Native (Ukuran Asli Layar Tanpa Scaling)",          0,    0,  900 * 1000)
+            ("Native (Ukuran Asli Layar Tanpa Scaling) [Default]", 0,    0,  900 * 1000)
         };
 
         private static readonly List<(string Label, int Fps)> FpsPresets = new()
         {
-            ("10 FPS [Super Hemat / Meeting & Log Dokumen]",              10),
-            ("15 FPS [Seimbang untuk Coding/Presentasi - Default]",       15),
+            ("10 FPS [Super Hemat / Meeting & Dokumen - Default]",        10),
+            ("15 FPS [Seimbang untuk Coding/Presentasi]",                 15),
             ("24 FPS [Standar Video Halus]",                              24),
             ("30 FPS [Paling Halus / Ukuran File Lebih Besar]",           30)
         };
 
-        private static int _resIndex = 0;
-        private static int _fpsIndex = 1;
+        private static int _resIndex = 3; // Default: Native
+        private static int _fpsIndex = 0; // Default: 10 FPS
 
         // ------------------------------------------------------------------
         // Logging (konsol + file)
@@ -52,7 +52,7 @@ namespace TinyScreenRec
             string videos = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
             if (string.IsNullOrWhiteSpace(videos))
                 videos = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            return Path.Combine(videos, "TinyScreenRec");
+            return Path.Combine(videos, "TinyScreen");
         }
 
         private static void InitFileLog()
@@ -103,7 +103,7 @@ namespace TinyScreenRec
         // ------------------------------------------------------------------
         static void Main(string[] args)
         {
-            Console.Title = "Tiny CLI Screen";
+            Console.Title = "TinyScreen";
             InitFileLog();
 
             // Tangkap crash yang lolos (termasuk dari thread native) supaya ada jejaknya
@@ -113,13 +113,13 @@ namespace TinyScreenRec
                 try { StopSession(); } catch { }
             };
 
-            // Ctrl+C: kalau sedang rekam, stop dengan aman; kalau tidak, biarkan keluar normal
+            // Ctrl+C: kalau sedang berjalan, stop dengan aman; kalau tidak, biarkan keluar normal
             Console.CancelKeyPress += (s, e) =>
             {
                 if (_isRecording)
                 {
                     e.Cancel = true;
-                    LogWarn("Ctrl+C diterima. Menghentikan rekaman dengan aman...");
+                    LogWarn("Ctrl+C diterima. Menghentikan proses dengan aman...");
                     StopSession();
                 }
             };
@@ -172,7 +172,7 @@ namespace TinyScreenRec
         {
             SafeClear();
             Console.WriteLine("==================================================");
-            Console.WriteLine("               TINY CLI SCREEN v1.0               ");
+            Console.WriteLine("                  TINYSCREEN v1.0                 ");
             Console.WriteLine("==================================================");
             Console.WriteLine(" [Konfigurasi Aktif]");
             Console.WriteLine($" > Resolusi   : {ResolutionPresets[_resIndex].Label}");
@@ -257,7 +257,7 @@ namespace TinyScreenRec
         }
 
         // ------------------------------------------------------------------
-        // Recording
+        // Session / Capture
         // ------------------------------------------------------------------
         private static bool TryPrepareOutputPath(out string outputPath)
         {
@@ -273,12 +273,12 @@ namespace TinyScreenRec
                     var drive = new DriveInfo(root);
                     if (drive.AvailableFreeSpace < MinFreeDiskBytes)
                     {
-                        LogError($"Sisa disk kurang dari {MinFreeDiskBytes / 1024 / 1024} MB. Rekaman dibatalkan.");
+                        LogError($"Sisa disk kurang dari {MinFreeDiskBytes / 1024 / 1024} MB. Sesi dibatalkan.");
                         return false;
                     }
                 }
 
-                outputPath = Path.Combine(dir, $"rec_{DateTime.Now:yyyyMMdd_HHmmss}.mp4");
+                outputPath = Path.Combine(dir, $"capture_{DateTime.Now:yyyyMMdd_HHmmss}.mp4");
 
                 // Uji tulis: pastikan folder benar-benar bisa ditulis
                 string probe = Path.Combine(dir, ".write_test");
@@ -299,16 +299,16 @@ namespace TinyScreenRec
             hasOut = false;
             try
             {
-                hasMic = Recorder.GetSystemAudioCaptureDevices().Count > 0;
-                hasOut = Recorder.GetSystemAudioLoopbackDevices().Count > 0;
+                hasMic = Recorder.GetSystemAudioDevices(AudioDeviceSource.InputDevices).Count > 0;
+                hasOut = Recorder.GetSystemAudioDevices(AudioDeviceSource.OutputDevices).Count > 0;
             }
             catch (Exception ex)
             {
                 LogWarn($"Gagal membaca daftar audio device: {ex.Message}");
             }
 
-            if (!hasMic) LogWarn("Mic tidak terdeteksi, rekam tanpa mic.");
-            if (!hasOut) LogWarn("Output device tidak terdeteksi, rekam tanpa audio internal.");
+            if (!hasMic) LogWarn("Mic tidak terdeteksi, jalan tanpa mic.");
+            if (!hasOut) LogWarn("Output device tidak terdeteksi, jalan tanpa audio internal.");
         }
 
         private static void StartRecordingSession()
@@ -323,20 +323,6 @@ namespace TinyScreenRec
 
             var res = ResolutionPresets[_resIndex];
             int fps = FpsPresets[_fpsIndex].Fps;
-
-            var audioSources = new List<AudioSourceBase>();
-            if (hasOut)
-            {
-                var defOut = LoopbackAudioSource.Default;
-                if (defOut != null) audioSources.Add(defOut);
-                else audioSources.Add(new LoopbackAudioSource());
-            }
-            if (hasMic)
-            {
-                var defMic = CaptureAudioSource.Default;
-                if (defMic != null) audioSources.Add(defMic);
-                else audioSources.Add(new CaptureAudioSource());
-            }
 
             var outputOptions = new OutputOptions
             {
@@ -353,19 +339,26 @@ namespace TinyScreenRec
                 {
                     Framerate = fps,
                     Bitrate = res.Bitrate,
-                    IsFixedFramerate = false,
-                    IsFragmentedMp4Enabled = true,
+                    IsFixedFramerate = true,
+                    IsFragmentedMp4Enabled = false,
+                    IsMp4FastStartEnabled = true,
+                    IsLowLatencyEnabled = true,
+                    IsHardwareEncodingEnabled = true,
                     Encoder = new H264VideoEncoder
                     {
-                        BitrateMode = H264BitrateControlMode.UnconstrainedVBR
+                        BitrateMode = H264BitrateControlMode.CBR,
+                        EncoderProfile = H264Profile.Baseline
                     }
                 },
                 AudioOptions = new AudioOptions
                 {
                     IsAudioEnabled = hasMic || hasOut,
+                    IsInputDeviceEnabled = hasMic,
+                    IsOutputDeviceEnabled = hasOut,
+                    AudioInputDevice = null,  // null = default mic sistem
+                    AudioOutputDevice = null, // null = default speaker sistem
                     Bitrate = AudioBitrate.bitrate_96kbps,
-                    Channels = AudioChannels.Stereo,
-                    AudioSources = audioSources
+                    Channels = AudioChannels.Stereo
                 }
             };
 
@@ -381,7 +374,7 @@ namespace TinyScreenRec
                 // Handler dipanggil dari thread native: wajib try/catch
                 recorder.OnRecordingComplete += (s, e) =>
                 {
-                    try { LogSuccess($"Rekaman tersimpan: {e.FilePath}"); }
+                    try { LogSuccess($"File tersimpan: {e.FilePath}"); }
                     catch { }
                     finally
                     {
@@ -392,7 +385,7 @@ namespace TinyScreenRec
 
                 recorder.OnRecordingFailed += (s, e) =>
                 {
-                    try { LogError($"Rekaman gagal: {e.Error}"); }
+                    try { LogError($"Proses gagal: {e.Error}"); }
                     catch { }
                     finally
                     {
@@ -408,10 +401,10 @@ namespace TinyScreenRec
                         switch (e.Status)
                         {
                             case RecorderStatus.Recording:
-                                LogSuccess("STATUS: Sedang berlangsung...");
+                                LogSuccess("STATUS: Sedang berjalan...");
                                 break;
                             case RecorderStatus.Paused:
-                                LogWarn("STATUS: Pause...");
+                                LogWarn("STATUS: Dijeda...");
                                 break;
                             case RecorderStatus.Finishing:
                                 LogInfo("STATUS: Finalisasi file...");
@@ -457,13 +450,13 @@ namespace TinyScreenRec
             catch (Exception ex)
             {
                 _isRecording = false;
-                LogError($"Gagal memulai/menjalankan rekaman: {ex.Message}");
+                LogError($"Gagal memulai/menjalankan sesi: {ex.Message}");
             }
             finally
             {
                 _recorder = null;
                 try { recorder?.Dispose(); }   // lepas resource native (D3D, WASAPI, MF)
-                catch (Exception ex) { LogWarn($"Dispose recorder bermasalah: {ex.Message}"); }
+                catch (Exception ex) { LogWarn($"Pembersihan resource bermasalah: {ex.Message}"); }
             }
 
             WaitKey();
@@ -484,7 +477,7 @@ namespace TinyScreenRec
             Console.WriteLine(" Kontrol Shortcut:");
             Console.WriteLine("  [P] : Pause / Resume");
             Console.WriteLine("  [S] : Stop & Simpan File");
-            Console.WriteLine("  Ctrl+C juga aman (rekaman difinalisasi dulu)");
+            Console.WriteLine("  Ctrl+C juga aman (file difinalisasi dulu)");
             Console.WriteLine("==================================================");
         }
 
@@ -501,7 +494,7 @@ namespace TinyScreenRec
                 var status = r.Status;
                 if (status == RecorderStatus.Recording || status == RecorderStatus.Paused)
                 {
-                    LogInfo("Menghentikan recorder...");
+                    LogInfo("Menghentikan sesi...");
                     r.Stop();
                 }
             }
