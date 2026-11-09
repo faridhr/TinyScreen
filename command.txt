@@ -1,0 +1,3 @@
+certutil -encode publish.zip publish.txt
+
+certutil -decode publish.txt publish.zip
